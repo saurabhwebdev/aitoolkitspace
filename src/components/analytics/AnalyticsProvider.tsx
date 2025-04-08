@@ -1,16 +1,25 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { Suspense } from 'react';
 import { usePageAnalytics } from '@/hooks/usePageAnalytics';
 
 interface AnalyticsProviderProps {
-  children: ReactNode;
+  children: React.ReactNode;
+}
+
+// Separate component that uses the hook
+function AnalyticsTracker() {
+  usePageAnalytics();
+  return null;
 }
 
 export default function AnalyticsProvider({ children }: AnalyticsProviderProps) {
-  // Use the hook to track page views
-  usePageAnalytics();
-  
-  // Just render children, the hook handles the tracking
-  return <>{children}</>;
+  return (
+    <>
+      <Suspense fallback={null}>
+        <AnalyticsTracker />
+      </Suspense>
+      {children}
+    </>
+  );
 } 
