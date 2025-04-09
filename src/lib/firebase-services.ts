@@ -466,20 +466,59 @@ export const getBlogPosts = async (): Promise<BlogPost[]> => {
 
 // Get featured blog posts
 export const getFeaturedBlogPosts = async (limitCount = 3) => {
-  const blogsRef = collection(db, 'blogs');
-  const q = query(
-    blogsRef, 
+  // Check both collections for featured blog posts
+  
+  // First, check the main blog_posts collection
+  const mainBlogsRef = collection(db, 'blog_posts');
+  const mainQuery = query(
+    mainBlogsRef, 
+    where('featured', '==', true),
+    where('status', '==', 'PUBLISHED'),
+    orderBy('createdAt', 'desc'),
+    limit(limitCount)
+  );
+  const mainSnapshot = await getDocs(mainQuery);
+  
+  const mainFeatured = mainSnapshot.docs.map(doc => {
+    const data = doc.data();
+    return {
+      id: doc.id,
+      ...data,
+      createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(),
+      updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : new Date()
+    } as BlogPost;
+  });
+  
+  // If we have enough from the main collection, return them
+  if (mainFeatured.length >= limitCount) {
+    return mainFeatured;
+  }
+  
+  // Otherwise, also check the legacy collection for more featured posts
+  const remainingCount = limitCount - mainFeatured.length;
+  const legacyBlogsRef = collection(db, 'blogs');
+  const legacyQuery = query(
+    legacyBlogsRef, 
     where('featured', '==', true),
     where('published', '==', true),
     orderBy('publishedAt', 'desc'),
-    limit(limitCount)
+    limit(remainingCount)
   );
-  const snapshot = await getDocs(q);
+  const legacySnapshot = await getDocs(legacyQuery);
   
-  return snapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data()
-  } as BlogPost));
+  const legacyFeatured = legacySnapshot.docs.map(doc => {
+    const data = doc.data();
+    return {
+      id: doc.id,
+      ...data,
+      createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(),
+      updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : new Date(),
+      status: 'PUBLISHED' // Ensure status is set for legacy entries
+    } as BlogPost;
+  });
+  
+  // Combine both sets of featured posts
+  return [...mainFeatured, ...legacyFeatured];
 };
 
 // Get blog post by ID
@@ -519,26 +558,64 @@ export const getBlogPostById = async (id: string) => {
 
 // Get blog post by slug
 export const getBlogPostBySlug = async (slug: string): Promise<BlogPost | null> => {
-  const blogsRef = collection(db, 'blog_posts');
-  const q = query(
-    blogsRef,
-    where('slug', '==', slug),
-    where('status', '==', 'PUBLISHED')
-  );
-  const snapshot = await getDocs(q);
-  
-  if (!snapshot.empty) {
-    const doc = snapshot.docs[0];
-    const data = doc.data();
-    return {
-      id: doc.id,
-      ...data,
-      createdAt: (data.createdAt as Timestamp)?.toDate(),
-      updatedAt: (data.updatedAt as Timestamp)?.toDate()
-    } as BlogPost;
+  try {
+    console.log(`Searching for blog post with slug: ${slug}`);
+    
+    // First check the 'blog_posts' collection (primary collection)
+    const blogsRef = collection(db, 'blog_posts');
+    const q = query(
+      blogsRef,
+      where('slug', '==', slug),
+      where('status', '==', 'PUBLISHED')
+    );
+    const snapshot = await getDocs(q);
+    
+    if (!snapshot.empty) {
+      const doc = snapshot.docs[0];
+      const data = doc.data();
+      console.log(`Found blog post in primary collection: ${data.title}`);
+      return {
+        id: doc.id,
+        ...data,
+        createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(),
+        updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : new Date()
+      } as BlogPost;
+    }
+    
+    // If not found, check the legacy 'blogs' collection
+    console.log('Blog not found in primary collection, checking legacy collection');
+    const legacyBlogsRef = collection(db, 'blogs');
+    const legacyQ = query(
+      legacyBlogsRef,
+      where('slug', '==', slug),
+      where('published', '==', true)
+    );
+    const legacySnapshot = await getDocs(legacyQ);
+    
+    if (!legacySnapshot.empty) {
+      const doc = legacySnapshot.docs[0];
+      const data = doc.data();
+      console.log(`Found blog post in legacy collection: ${data.title}`);
+      return {
+        id: doc.id,
+        ...data,
+        title: data.title || '',
+        content: data.content || '',
+        summary: data.summary || data.excerpt || '',
+        tags: data.tags || [],
+        author: data.author || data.authorName || '',
+        createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(),
+        updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : new Date(),
+        status: 'PUBLISHED'
+      } as BlogPost;
+    }
+    
+    console.log(`No blog post found with slug: ${slug}`);
+    return null;
+  } catch (error) {
+    console.error('Error fetching blog post by slug:', error);
+    return null;
   }
-  
-  return null;
 };
 
 // Create new blog post
@@ -556,13 +633,31 @@ export const createBlogPost = async (post: Omit<BlogPost, 'id'>): Promise<string
 
 // Update blog post
 export const updateBlogPost = async (id: string, post: Partial<BlogPost>): Promise<void> => {
-  const postRef = doc(db, 'blog_posts', id);
-  const updates = {
-    ...post,
-    updatedAt: serverTimestamp()
-  };
-  
-  await updateDoc(postRef, updates);
+  try {
+    // Ensure we're updating the correct collection
+    const postRef = doc(db, 'blog_posts', id);
+    
+    // Check if we're changing the featured status
+    if (post.featured !== undefined) {
+      console.log(`Setting featured status to: ${post.featured}`);
+    }
+    
+    // Check if we're changing publish status
+    if (post.status) {
+      console.log(`Setting publish status to: ${post.status}`);
+    }
+    
+    const updates = {
+      ...post,
+      updatedAt: serverTimestamp()
+    };
+    
+    await updateDoc(postRef, updates);
+    console.log('Blog post updated successfully');
+  } catch (error) {
+    console.error('Error updating blog post:', error);
+    throw error;
+  }
 };
 
 // Delete blog post

@@ -75,6 +75,7 @@ export interface BlogPost {
   createdAt: Date;
   updatedAt: Date;
   status: 'DRAFT' | 'PUBLISHED';
+  featured?: boolean;
 }
 
 // User interface (extended from Firebase User)

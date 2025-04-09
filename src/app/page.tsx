@@ -9,6 +9,7 @@ import CategoryFilters from '@/components/home/CategoryFilters';
 import SearchTools from '@/components/home/SearchTools';
 import { getAllCategories, getAllTools } from '@/lib/firebase-services';
 import { Category, Tool } from '@/lib/models';
+import FeaturedBlogPosts from '@/components/home/FeaturedBlogPosts';
 
 export default function Home() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -228,6 +229,40 @@ export default function Home() {
             viewport={{ once: true }}
           >
             <CategoryFilters />
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Blog Posts Section */}
+      <section className="py-20 bg-gradient-to-b from-gray-50 to-white relative overflow-hidden">
+        {/* Background decorative elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-blue-50 rounded-full opacity-70"></div>
+          <div className="absolute top-20 right-20 w-80 h-80 bg-purple-50 rounded-full filter blur-3xl opacity-30"></div>
+        </div>
+        
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            viewport={{ once: true }}
+            className="text-center mb-12"
+          >
+            <div className="inline-block px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium mb-3">LATEST INSIGHTS</div>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">From Our Blog</h2>
+            <p className="text-gray-600 max-w-2xl mx-auto">
+              Discover the latest trends, tutorials, and insights about AI tools and technologies
+            </p>
+          </motion.div>
+          
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            viewport={{ once: true }}
+          >
+            <FeaturedBlogPosts />
           </motion.div>
         </div>
       </section>

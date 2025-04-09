@@ -83,7 +83,7 @@ function EditBlog({ id }: { id: string }) {
             tags: blog.tags || [],
             relatedTools: [],
             published: blog.status === 'PUBLISHED',
-            featured: false,
+            featured: blog.featured || false,
             summary: blog.summary || '',
             author: blog.author || '',
             category: blog.category || ''
@@ -149,7 +149,8 @@ function EditBlog({ id }: { id: string }) {
         ...formData,
         slug: formData.slug || generateSlug(formData.title!),
         tags: formData.tags || [],
-        relatedTools: formData.relatedTools || []
+        relatedTools: formData.relatedTools || [],
+        status: formData.published ? 'PUBLISHED' : 'DRAFT'
       };
       
       await updateBlogPost(blogId, blogData as any);

@@ -26,10 +26,9 @@ export default function BlogPage() {
           console.log(`Blog ${i+1}: "${post.title}", ID: ${post.id}, Status: ${post.status}, Slug: ${post.slug}`);
         });
         
-        // Filter for published posts only - simplified logic
+        // Filter for published posts only
         const publishedPosts = blogPosts.filter(post => {
           // Consider a post published if its status is PUBLISHED (case insensitive)
-          if (!post.status) return false;
           const status = typeof post.status === 'string' ? post.status.toUpperCase() : String(post.status).toUpperCase();
           console.log(`Post status for "${post.title}": ${status}, type: ${typeof post.status}`);
           return status === 'PUBLISHED';
