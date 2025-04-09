@@ -5,6 +5,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
 import TeamNominationForm from '@/components/forms/TeamNominationForm';
+import AnimatedGradient from '@/components/ui/AnimatedGradient';
+import AnimatedTextGradient from '@/components/ui/AnimatedTextGradient';
 
 export default function About() {
   const [isNominationModalOpen, setIsNominationModalOpen] = useState(false);
@@ -31,12 +33,14 @@ export default function About() {
             transition={{ duration: 0.5 }}
           className="text-center mb-16"
         >
-            <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
-              About AIToolKit.space
-            </h1>
-            <p className="text-xl md:text-2xl text-gray-700 max-w-3xl mx-auto leading-relaxed">
+            <div className="relative">
+              <h1 className="text-5xl md:text-6xl font-bold mb-6">
+                <AnimatedTextGradient>About AIToolKit.space</AnimatedTextGradient>
+              </h1>
+            </div>
+            <p className="text-xl md:text-2xl text-gray-700 max-w-3xl mx-auto leading-relaxed mt-6">
               We help you navigate the rapidly evolving world of AI tools and solutions
-          </p>
+            </p>
         </motion.div>
 
           <motion.div
@@ -45,19 +49,16 @@ export default function About() {
             transition={{ duration: 0.5, delay: 0.2 }}
             className="relative mx-auto max-w-5xl rounded-2xl overflow-hidden shadow-2xl"
           >
-            <div className="aspect-[16/9] w-full relative bg-gradient-to-r from-blue-500 to-indigo-600">
-              <div className="absolute inset-0 flex items-center justify-center text-white text-opacity-5">
-                <span className="text-[120px] md:text-[180px] font-bold">AI</span>
-              </div>
-              <div className="absolute inset-0 flex items-center justify-center p-8">
-                <div className="max-w-3xl text-center text-white bg-black bg-opacity-20 p-8 rounded-xl backdrop-blur-sm">
-                  <h2 className="text-3xl md:text-4xl font-bold mb-6">Curating the Best AI Tools Since 2023</h2>
-                  <p className="text-lg md:text-xl">
+            <AnimatedGradient className="w-full py-16 md:py-20">
+              <div className="flex items-center justify-center h-full">
+                <div className="text-white max-w-2xl px-6">
+                  <h2 className="text-3xl md:text-4xl font-bold mb-6 text-center text-shadow-lg">Curating the Best AI Tools Since 2023</h2>
+                  <p className="text-lg md:text-xl text-center text-shadow-lg">
                     In a world where new AI tools emerge daily, we're your trusted guide to finding the ones that truly matter.
                   </p>
                 </div>
               </div>
-            </div>
+            </AnimatedGradient>
           </motion.div>
         </div>
       </div>
@@ -72,7 +73,9 @@ export default function About() {
             transition={{ duration: 0.5 }}
             className="text-center mb-16"
           >
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Our Mission</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              <AnimatedTextGradient>Our Mission</AnimatedTextGradient>
+            </h2>
             <div className="w-20 h-1 bg-blue-600 mx-auto mb-8"></div>
             <p className="text-xl text-gray-700 max-w-4xl mx-auto">
               AIToolKit.space is dedicated to simplifying the complex landscape of AI tools by providing a comprehensive, user-friendly directory where professionals can discover the perfect solutions for their specific needs.
@@ -113,7 +116,9 @@ export default function About() {
             transition={{ duration: 0.5 }}
             className="text-center mb-16"
           >
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Our Values</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              <AnimatedTextGradient>Our Values</AnimatedTextGradient>
+            </h2>
             <div className="w-20 h-1 bg-blue-600 mx-auto mb-8"></div>
           </motion.div>
 
@@ -152,7 +157,9 @@ export default function About() {
             transition={{ duration: 0.5 }}
             className="text-center mb-16"
           >
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Who We Serve</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              <AnimatedTextGradient>Who We Serve</AnimatedTextGradient>
+            </h2>
             <div className="w-20 h-1 bg-blue-600 mx-auto mb-8"></div>
             <p className="text-xl text-gray-700 max-w-4xl mx-auto">
               Our platform is designed to support professionals across various fields who want to leverage the power of AI in their work.
@@ -190,7 +197,9 @@ export default function About() {
             transition={{ duration: 0.5 }}
             className="text-center mb-16"
           >
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Our Team</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              <AnimatedTextGradient>Our Team</AnimatedTextGradient>
+            </h2>
             <div className="w-20 h-1 bg-blue-600 mx-auto mb-8"></div>
             <p className="text-xl text-gray-700 max-w-4xl mx-auto">
               Meet the passionate individuals behind AIToolKit.space who are committed to helping you discover the perfect AI tools.
@@ -249,27 +258,25 @@ export default function About() {
       {/* Call to Action */}
       <section className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-5xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
-            className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-10 md:p-16 text-center text-white shadow-xl"
-          >
-            <h2 className="text-3xl md:text-4xl font-bold mb-6">Ready to Discover the Best AI Tools?</h2>
-            <p className="text-xl mb-8 max-w-3xl mx-auto">
-              Explore our curated collection of AI tools and find the perfect solutions to enhance your workflow.
-            </p>
-            <div className="flex flex-wrap justify-center gap-4">
-              <Link href="/tools" className="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold text-lg hover:bg-blue-50 transition-colors">
-                Explore Tools
-              </Link>
-              <Link href="/contact" className="bg-transparent border-2 border-white text-white px-8 py-3 rounded-lg font-semibold text-lg hover:bg-white hover:bg-opacity-10 transition-colors">
-                Contact Us
-              </Link>
-          </div>
-        </motion.div>
-      </div>
+          <AnimatedGradient className="w-full py-16 md:py-20">
+            <div className="flex items-center justify-center h-full">
+              <div className="text-white max-w-2xl px-6">
+                <h2 className="text-3xl md:text-4xl font-bold mb-6 text-center text-shadow-lg">Ready to Discover the Best AI Tools?</h2>
+                <p className="text-xl mb-8 text-center text-shadow-lg">
+                  Explore our curated collection of AI tools and find the perfect solutions to enhance your workflow.
+                </p>
+                <div className="flex flex-wrap justify-center gap-4">
+                  <Link href="/tools" className="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold text-lg hover:bg-blue-50 transition-colors">
+                    Explore Tools
+                  </Link>
+                  <Link href="/contact" className="bg-transparent border-2 border-white text-white px-8 py-3 rounded-lg font-semibold text-lg hover:bg-white hover:bg-opacity-10 transition-colors">
+                    Contact Us
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </AnimatedGradient>
+        </div>
       </section>
     </div>
   );

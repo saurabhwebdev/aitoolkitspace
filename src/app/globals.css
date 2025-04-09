@@ -24,3 +24,54 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Animated gradient background */
+.background-animate {
+  background-size: 300% 300%;
+  -webkit-animation: gradient-animation 8s ease infinite;
+  -moz-animation: gradient-animation 8s ease infinite;
+  animation: gradient-animation 8s ease infinite;
+}
+
+/* Slower animation variant for the secondary gradient */
+.background-animate-slow {
+  background-size: 300% 300%;
+  -webkit-animation: gradient-animation 12s ease infinite alternate;
+  -moz-animation: gradient-animation 12s ease infinite alternate;
+  animation: gradient-animation 12s ease infinite alternate;
+}
+
+@keyframes gradient-animation {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Support for prefers-reduced-motion */
+@media (prefers-reduced-motion) {
+  .background-animate,
+  .background-animate-slow {
+    animation: none;
+    background-size: 100%;
+    background-position: 0 0;
+  }
+}
+
+/* Text shadow for better readability on gradients */
+.text-shadow-sm {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.text-shadow-md {
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+.text-shadow-lg {
+  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.7);
+}

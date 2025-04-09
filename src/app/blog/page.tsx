@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { getBlogPosts } from '@/lib/firebase-services';
 import { BlogPost } from '@/lib/models';
 import { Timestamp } from 'firebase/firestore';
+import AnimatedTextGradient from '@/components/ui/AnimatedTextGradient';
 
 export default function BlogPage() {
   const [posts, setPosts] = useState<BlogPost[]>([]);
@@ -103,7 +104,9 @@ export default function BlogPage() {
     <div className="min-h-screen pt-20 px-4">
       <div className="max-w-7xl mx-auto">
         <div className="mb-12 text-center">
-          <h1 className="text-4xl font-bold mb-4">AI Tools Blog</h1>
+          <h1 className="text-4xl font-bold mb-4">
+            <AnimatedTextGradient>AI Tools Blog</AnimatedTextGradient>
+          </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
             Insights, tutorials, and updates about the latest AI tools and technologies
           </p>

@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { submitContactForm } from '@/lib/firebase-services';
 import ToolSubmissionForm from '@/components/ToolSubmissionForm';
+import AnimatedTextGradient from '@/components/ui/AnimatedTextGradient';
 
 export default function Contact() {
   const [formData, setFormData] = useState({
@@ -57,8 +58,8 @@ export default function Contact() {
             transition={{ duration: 0.5 }}
             className="text-center mb-16"
           >
-            <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
-              Get in Touch
+            <h1 className="text-5xl md:text-6xl font-bold mb-6">
+              <AnimatedTextGradient>Get in Touch</AnimatedTextGradient>
             </h1>
             <p className="text-xl md:text-2xl text-gray-700 max-w-3xl mx-auto leading-relaxed">
               Have questions about our platform or want to list your AI tool? We're here to help.
