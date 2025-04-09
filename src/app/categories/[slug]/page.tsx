@@ -195,7 +195,9 @@ function CategoryContent() {
                               src={tool.imageUrl}
                               alt={tool.name}
                               fill
-                              className="rounded-lg object-cover"
+                              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                              className="rounded-lg object-contain p-1"
+                              quality={80}
                             />
                           </div>
                         ) : (

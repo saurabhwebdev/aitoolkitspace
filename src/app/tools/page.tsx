@@ -55,8 +55,8 @@ function ToolsContent() {
         const categories = new Set<string>();
         pageTools.forEach(tool => {
           if (tool.category) {
-            const cats = tool.category.split(',').map(cat => cat.trim());
-            cats.forEach(cat => categories.add(cat));
+            const cats = tool.category.split(',').map((cat: string) => cat.trim());
+            cats.forEach((cat: string) => categories.add(cat));
           }
         });
         setAvailableCategories(Array.from(categories).sort());
@@ -390,7 +390,8 @@ function ToolsContent() {
                       alt={tool.name}
                       fill
                       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                      className="object-cover"
+                      className="object-contain p-2"
+                      quality={80}
                     />
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
