@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useAuth } from '@/lib/AuthContext';
@@ -9,17 +9,29 @@ import { Tool, Bookmark } from '@/lib/models';
 import ToolSubmissionForm from '@/components/ToolSubmissionForm';
 import { useSearchParams } from 'next/navigation';
 
+// Extract tab selection logic to a separate client component
+function TabSelector({ onTabChange }: { onTabChange: (tab: 'bookmarks' | 'submit') => void }) {
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  
+  useEffect(() => {
+    if (tabParam === 'submit') {
+      onTabChange('submit');
+    } else {
+      onTabChange('bookmarks');
+    }
+  }, [tabParam, onTabChange]);
+  
+  return null; // This component just handles the logic, no UI
+}
+
 export default function BookmarksPage() {
   const { user } = useAuth();
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [tools, setTools] = useState<Tool[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const searchParams = useSearchParams();
-  const tabParam = searchParams.get('tab');
-  const [activeTab, setActiveTab] = useState<'bookmarks' | 'submit'>(
-    tabParam === 'submit' ? 'submit' : 'bookmarks'
-  );
+  const [activeTab, setActiveTab] = useState<'bookmarks' | 'submit'>('bookmarks');
 
   useEffect(() => {
     const fetchBookmarks = async () => {
@@ -45,15 +57,6 @@ export default function BookmarksPage() {
 
     fetchBookmarks();
   }, [user]);
-
-  // Update activeTab when URL parameter changes
-  useEffect(() => {
-    if (tabParam === 'submit') {
-      setActiveTab('submit');
-    } else {
-      setActiveTab('bookmarks');
-    }
-  }, [tabParam]);
 
   if (!user) {
     return (
@@ -89,6 +92,11 @@ export default function BookmarksPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
+      {/* Wrap useSearchParams in a Suspense boundary */}
+      <Suspense fallback={null}>
+        <TabSelector onTabChange={setActiveTab} />
+      </Suspense>
+      
       <div className="container mx-auto px-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

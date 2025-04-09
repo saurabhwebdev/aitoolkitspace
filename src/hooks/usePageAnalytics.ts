@@ -1,18 +1,25 @@
+'use client';
+
 import { useEffect } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { pageview } from '@/lib/analytics';
 
+// The base version that doesn't use search params (more compatible)
+export function usePageAnalyticsBase() {
+  const pathname = usePathname();
+
+  useEffect(() => {
+    if (pathname) {
+      // Track pageview with Google Analytics (pathname only)
+      pageview(pathname);
+    }
+  }, [pathname]);
+}
+
+// The full version with search params that requires Suspense
 export function usePageAnalytics() {
   const pathname = usePathname();
-  
-  // Wrap useSearchParams in a try-catch to handle the case when it's used outside of a Suspense boundary
-  let searchParams;
-  try {
-    searchParams = useSearchParams();
-  } catch (error) {
-    // If useSearchParams fails, use an empty string for search params
-    searchParams = null;
-  }
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     if (pathname) {
