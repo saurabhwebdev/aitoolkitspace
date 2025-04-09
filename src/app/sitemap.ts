@@ -1,9 +1,44 @@
 import { MetadataRoute } from 'next';
-import { getAllTools } from '@/lib/firebase-services';
-import { getBlogPosts } from '@/lib/firebase-services';
-import { BlogPost } from '@/lib/models';
+import { getAllTools, getToolsCount, getBlogPosts } from '@/lib/firebase-services';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { BlogPost, Tool } from '@/lib/models';
+
+// Cache the sitemap result for better performance
+let cachedSitemap: MetadataRoute.Sitemap | null = null;
+let lastCacheTime: number = 0;
+const CACHE_TTL = 60 * 60 * 1000; // 1 hour in milliseconds
+
+// Helper function to get all tools specifically for sitemap
+async function getAllToolsForSitemap(): Promise<Tool[]> {
+  try {
+    console.log('Fetching all tools for sitemap directly from database...');
+    const toolsRef = collection(db, 'tools');
+    const snapshot = await getDocs(toolsRef);
+    
+    return snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        createdAt: data.createdAt?.toDate() || new Date(),
+        updatedAt: data.updatedAt?.toDate() || new Date()
+      } as Tool;
+    });
+  } catch (error) {
+    console.error('Error fetching all tools for sitemap:', error);
+    return [];
+  }
+}
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  // Return cached sitemap if it's still valid
+  const now = Date.now();
+  if (cachedSitemap && lastCacheTime + CACHE_TTL > now) {
+    console.log('Using cached sitemap');
+    return cachedSitemap;
+  }
+
   // Base URL
   const baseUrl = 'https://aitoolkit.space';
   
@@ -53,20 +88,27 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
   
-  // Dynamic tool pages
-  const tools = await getAllTools();
-  const toolSitemap: MetadataRoute.Sitemap = tools.map((tool) => ({
-    url: `${baseUrl}/tools/${tool.slug}`,
-    lastModified: tool.updatedAt instanceof Date 
-      ? tool.updatedAt 
-      : tool.createdAt instanceof Date 
-        ? tool.createdAt 
-        : new Date(),
-    changeFrequency: 'weekly',
-    priority: 0.7,
-  }));
+  // Get tools directly with a single database query instead of using pagination
+  console.time('Tools sitemap generation');
+  const allTools = await getAllToolsForSitemap();
+  
+  const toolSitemap: MetadataRoute.Sitemap = allTools
+    .filter(tool => tool.slug) // Make sure tools have slugs
+    .map((tool) => ({
+      url: `${baseUrl}/tools/${tool.slug}`,
+      lastModified: tool.updatedAt instanceof Date 
+        ? tool.updatedAt 
+        : tool.createdAt instanceof Date 
+          ? tool.createdAt 
+          : new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.7,
+    }));
+  console.timeEnd('Tools sitemap generation');
+  console.log(`Added ${toolSitemap.length} tools to sitemap`);
   
   // Dynamic blog pages
+  console.time('Blog sitemap generation');
   let blogSitemap: MetadataRoute.Sitemap = [];
   try {
     const blogPosts = await getBlogPosts();
@@ -78,10 +120,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         changeFrequency: 'monthly',
         priority: 0.6,
       }));
+    console.log(`Added ${blogSitemap.length} blog posts to sitemap`);
   } catch (error) {
     console.error('Error fetching blog posts for sitemap:', error);
   }
+  console.timeEnd('Blog sitemap generation');
   
   // Combine all routes
-  return [...staticPages, ...toolSitemap, ...blogSitemap];
+  const result = [...staticPages, ...toolSitemap, ...blogSitemap];
+  
+  // Update cache
+  cachedSitemap = result;
+  lastCacheTime = now;
+  
+  return result;
 } 
