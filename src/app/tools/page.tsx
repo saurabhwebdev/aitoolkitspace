@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { getAllTools, isToolBookmarked, addBookmark, removeBookmark, searchTools } from '@/lib/firebase-services';
+import { getAllTools, isToolBookmarked, addBookmark, removeBookmark, searchTools, getToolsCount } from '@/lib/firebase-services';
 import { Tool, ToolCategory, ToolPricing } from '@/lib/models';
 import Link from 'next/link';
 import { useAuth } from '@/lib/AuthContext';
 import Image from 'next/image';
+import { useSearchParams } from 'next/navigation';
 
 export default function ToolsPage() {
   const [tools, setTools] = useState<Tool[]>([]);
@@ -16,6 +17,7 @@ export default function ToolsPage() {
   const [selectedPricing, setSelectedPricing] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'name' | 'newest'>('newest');
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalToolsCount, setTotalToolsCount] = useState(0);
   const [bookmarkedTools, setBookmarkedTools] = useState<Record<string, boolean>>({});
   const [bookmarkLoading, setBookmarkLoading] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -23,17 +25,34 @@ export default function ToolsPage() {
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
   const { user } = useAuth();
   const toolsPerPage = 9; // Number of tools to display per page
+  const searchParams = useSearchParams();
 
+  // Effect to initialize current page from URL
+  useEffect(() => {
+    const pageParam = searchParams.get('page');
+    if (pageParam) {
+      const pageNumber = parseInt(pageParam, 10);
+      if (!isNaN(pageNumber) && pageNumber > 0) {
+        setCurrentPage(pageNumber);
+      }
+    }
+  }, [searchParams]);
+
+  // Effect to fetch tools based on current page
   useEffect(() => {
     const fetchTools = async () => {
       try {
         setLoading(true);
-        const allTools = await getAllTools();
-        setTools(allTools);
+        const pageTools = await getAllTools(currentPage, toolsPerPage);
+        setTools(pageTools);
+        
+        // Get total count for pagination
+        const totalCount = await getToolsCount();
+        setTotalToolsCount(totalCount);
         
         // Extract unique categories from tools
         const categories = new Set<string>();
-        allTools.forEach(tool => {
+        pageTools.forEach(tool => {
           if (tool.category) {
             const cats = tool.category.split(',').map(cat => cat.trim());
             cats.forEach(cat => categories.add(cat));
@@ -49,8 +68,11 @@ export default function ToolsPage() {
       }
     };
 
-    fetchTools();
-  }, []);
+    // Only fetch tools if not searching
+    if (!isSearching && !searchQuery) {
+      fetchTools();
+    }
+  }, [currentPage, toolsPerPage, isSearching, searchQuery]);
 
   // Check which tools are bookmarked by the user
   useEffect(() => {
@@ -130,6 +152,7 @@ export default function ToolsPage() {
       setLoading(true);
       const searchResults = await searchTools(searchQuery);
       setTools(searchResults);
+      setTotalToolsCount(searchResults.length); // Update total count for search results
     } catch (err) {
       console.error('Error searching tools:', err);
       setError('Failed to search tools. Please try again later.');
@@ -141,20 +164,9 @@ export default function ToolsPage() {
 
   const handleClearSearch = () => {
     setSearchQuery('');
-    // Reset to all tools
-    const fetchTools = async () => {
-      try {
-        setLoading(true);
-        const allTools = await getAllTools();
-        setTools(allTools);
-      } catch (err) {
-        console.error('Error fetching tools:', err);
-        setError('Failed to load tools. Please try again later.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchTools();
+    setIsSearching(false);
+    // Reset to first page and let the useEffect fetch tools again
+    setCurrentPage(1);
   };
 
   // Function to get category array from a tool
@@ -163,6 +175,7 @@ export default function ToolsPage() {
     return tool.category.split(',').map(cat => cat.trim());
   };
 
+  // Apply filters to the current page of tools
   const filteredTools = tools.filter(tool => {
     // Category filter - now handles comma-separated categories
     const categoryMatch = selectedCategory === 'all' || 
@@ -174,6 +187,7 @@ export default function ToolsPage() {
     return categoryMatch && pricingMatch;
   });
 
+  // Sort the filtered tools
   const sortedTools = [...filteredTools].sort((a, b) => {
     if (sortBy === 'name') {
       return a.name.localeCompare(b.name);
@@ -184,17 +198,19 @@ export default function ToolsPage() {
     return dateB - dateA;
   });
 
-  // Calculate pagination
-  const totalTools = sortedTools.length;
-  const totalPages = Math.ceil(totalTools / toolsPerPage);
+  // Calculate pagination based on total count (not filtered count)
+  const totalPages = Math.ceil(totalToolsCount / toolsPerPage);
   const startIndex = (currentPage - 1) * toolsPerPage;
-  const endIndex = startIndex + toolsPerPage;
-  const currentTools = sortedTools.slice(startIndex, endIndex);
+  const endIndex = Math.min(startIndex + toolsPerPage, totalToolsCount);
 
   // Handle page navigation
   const handlePageChange = (pageNumber: number) => {
-    setCurrentPage(pageNumber);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Use history state to maintain a clean URL with the page parameter
+    const url = new URL(window.location.href);
+    url.searchParams.set('page', pageNumber.toString());
+    window.history.pushState({}, '', url);
+    setCurrentPage(pageNumber);
   };
 
   // Generate pagination items with ellipsis
@@ -346,7 +362,7 @@ export default function ToolsPage() {
 
         {/* Tools Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {currentTools.map((tool, index) => (
+          {sortedTools.map((tool, index) => (
             <div key={tool.id} className="relative">
               <Link href={`/tools/${tool.slug}`}>
                 <motion.div
@@ -476,7 +492,7 @@ export default function ToolsPage() {
             
             {/* Results count */}
             <div className="mt-4 text-sm text-gray-500">
-              Showing {startIndex + 1}-{Math.min(endIndex, totalTools)} of {totalTools} tools
+              Showing {startIndex + 1}-{Math.min(endIndex, totalToolsCount)} of {totalToolsCount} tools
             </div>
           </div>
         )}

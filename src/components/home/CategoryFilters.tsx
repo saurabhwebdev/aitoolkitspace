@@ -22,7 +22,8 @@ export default function CategoryFilters() {
         
         // If no categories are found in the categories collection, extract them from tools
         if (allCategories.length === 0) {
-          const tools = await getAllTools();
+          // Get all tools with a large page size to ensure we capture all categories
+          const tools = await getAllTools(1, 1000);
           
           // Extract unique categories from tools
           const categoryMap = new Map<string, number>();
@@ -105,8 +106,13 @@ export default function CategoryFilters() {
     );
   }
 
-  // Determine which categories to display
-  const displayCategories = showAll ? currentCategories : categories.slice(0, 10);
+  // Get popular categories - same as shown on homepage
+  const popularCategories = categories
+    .sort((a, b) => b.toolCount - a.toolCount)
+    .slice(0, 10);
+
+  // Determine which categories to display in the grid
+  const displayCategories = showAll ? currentCategories : popularCategories;
 
   return (
     <div className="w-full py-16 relative">
@@ -169,8 +175,9 @@ export default function CategoryFilters() {
           </motion.p>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {displayCategories.map((category, index) => (
+        {/* Display popular categories as cards */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-12">
+          {popularCategories.map((category, index) => (
             <motion.div
               key={category.id}
               initial={{ opacity: 0, y: 20 }}
@@ -212,6 +219,53 @@ export default function CategoryFilters() {
             </motion.div>
           ))}
         </div>
+
+        {/* Category Cards Grid (only shown when "View All Categories" is clicked) */}
+        {showAll && (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {currentCategories.map((category, index) => (
+              <motion.div
+                key={category.id}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.1 * (index % 4) }}
+                viewport={{ once: true }}
+              >
+                <Link href={`/categories/${category.slug}`}>
+                  <motion.div
+                    whileHover={{ y: -5, boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)" }}
+                    whileTap={{ scale: 0.98 }}
+                    className="bg-white p-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 h-full border border-gray-100 relative overflow-hidden group"
+                  >
+                    {/* Category icon with gradient background */}
+                    <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-blue-50 to-purple-50 rounded-bl-full opacity-70 group-hover:opacity-100 transition-opacity"></div>
+                    
+                    <div className="flex flex-col items-center text-center relative z-10">
+                      <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center mb-3 shadow-sm group-hover:shadow-md transition-shadow">
+                        {category.icon ? (
+                          <span className="text-xl text-white">{category.icon}</span>
+                        ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                          </svg>
+                        )}
+                      </div>
+                      <h3 className="font-bold text-base mb-1 group-hover:text-blue-600 transition-colors truncate w-full">{category.name}</h3>
+                      <p className="text-xs text-gray-500 mb-2">{category.toolCount} tools</p>
+                      
+                      <div className="mt-auto pt-1 flex items-center text-blue-600 font-medium text-xs">
+                        <span>Explore</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 ml-1 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </motion.div>
+                </Link>
+              </motion.div>
+            ))}
+          </div>
+        )}
         
         <motion.div
           initial={{ opacity: 0, y: 20 }}

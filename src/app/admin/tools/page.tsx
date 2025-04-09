@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { getAllTools, deleteTool } from '@/lib/firebase-services';
+import { getAllTools, deleteTool, getToolsCount, searchTools } from '@/lib/firebase-services';
 import { Tool, ToolStatus, ToolCategory, ToolPricing } from '@/lib/models';
 
 export default function AdminTools() {
@@ -18,15 +18,82 @@ export default function AdminTools() {
   const [sortBy, setSortBy] = useState<string>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalToolsCount, setTotalToolsCount] = useState(0);
+  const [isSearching, setIsSearching] = useState(false);
   const toolsPerPage = 10; // Number of tools to display per page
 
   useEffect(() => {
     const fetchTools = async () => {
       try {
         setLoading(true);
-        const toolsData = await getAllTools();
-        setTools(toolsData);
-        setFilteredTools(toolsData);
+        
+        // If we have a search term, use the search functionality
+        if (searchTerm.trim()) {
+          setIsSearching(true);
+          const searchResults = await searchTools(searchTerm);
+          
+          // Apply any other filters client-side
+          let filtered = searchResults;
+          
+          if (filterCategory !== 'all') {
+            filtered = filtered.filter(tool => tool.category === filterCategory);
+          }
+          
+          if (filterStatus !== 'all') {
+            filtered = filtered.filter(tool => tool.status === filterStatus);
+          }
+          
+          // Apply sorting
+          filtered.sort((a, b) => {
+            let comparison = 0;
+            
+            switch (sortBy) {
+              case 'name':
+                comparison = a.name.localeCompare(b.name);
+                break;
+              case 'category':
+                comparison = (a.category || '').localeCompare(b.category || '');
+                break;
+              case 'status':
+                comparison = (a.status || '').localeCompare(b.status || '');
+                break;
+              case 'views':
+                comparison = (a.viewCount || 0) - (b.viewCount || 0);
+                break;
+              case 'date':
+                const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : (a.createdAt?.toMillis?.() || 0);
+                const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : (b.createdAt?.toMillis?.() || 0);
+                comparison = dateA - dateB;
+                break;
+              default:
+                comparison = a.name.localeCompare(b.name);
+            }
+            
+            return sortOrder === 'asc' ? comparison : -comparison;
+          });
+          
+          setTools(filtered);
+          setFilteredTools(filtered);
+          setTotalToolsCount(filtered.length);
+        } else {
+          // Regular initial load without search
+          setIsSearching(false);
+          
+          // Get total count first
+          const count = await getToolsCount();
+          setTotalToolsCount(count);
+          
+          // Only fetch the needed page size that matches the UI pagination
+          const toolsData = await getAllTools(1, toolsPerPage, {
+            category: filterCategory,
+            status: filterStatus,
+            searchTerm: searchTerm,
+            sortBy: sortBy,
+            sortOrder: sortOrder
+          });
+          setTools(toolsData);
+          setFilteredTools(toolsData);
+        }
       } catch (err) {
         console.error('Error fetching tools:', err);
         setError('Failed to load tools. Please try again.');
@@ -39,65 +106,128 @@ export default function AdminTools() {
   }, []);
 
   useEffect(() => {
-    // Filter and sort tools when filter criteria change
-    let result = [...tools];
-
-    // Filter by search term
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      result = result.filter(
-        tool => 
-          tool.name.toLowerCase().includes(term) || 
-          tool.description.toLowerCase().includes(term) ||
-          tool.tags?.some(tag => tag.toLowerCase().includes(term))
-      );
-    }
-
-    // Filter by category
-    if (filterCategory && filterCategory !== 'all') {
-      result = result.filter(tool => tool.category === filterCategory);
-    }
-
-    // Filter by status
-    if (filterStatus && filterStatus !== 'all') {
-      result = result.filter(tool => tool.status === filterStatus);
-    }
-
-    // Sort tools
-    result.sort((a, b) => {
-      let comparison = 0;
+    // When filter criteria change, reset to page 1 and fetch data again
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    } else {
+      // If already on page 1, fetch with the new filters
+      const fetchFiltered = async () => {
+        try {
+          setLoading(true);
+          
+          // For search term, use the specialized search function
+          if (searchTerm.trim()) {
+            setIsSearching(true);
+            const searchResults = await searchTools(searchTerm);
+            
+            // Apply any other filters client-side
+            let filtered = searchResults;
+            
+            if (filterCategory !== 'all') {
+              filtered = filtered.filter(tool => tool.category === filterCategory);
+            }
+            
+            if (filterStatus !== 'all') {
+              filtered = filtered.filter(tool => tool.status === filterStatus);
+            }
+            
+            // Apply sorting
+            filtered.sort((a, b) => {
+              let comparison = 0;
+              
+              switch (sortBy) {
+                case 'name':
+                  comparison = a.name.localeCompare(b.name);
+                  break;
+                case 'category':
+                  comparison = (a.category || '').localeCompare(b.category || '');
+                  break;
+                case 'status':
+                  comparison = (a.status || '').localeCompare(b.status || '');
+                  break;
+                case 'views':
+                  comparison = (a.viewCount || 0) - (b.viewCount || 0);
+                  break;
+                case 'date':
+                  const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : (a.createdAt?.toMillis?.() || 0);
+                  const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : (b.createdAt?.toMillis?.() || 0);
+                  comparison = dateA - dateB;
+                  break;
+                default:
+                  comparison = a.name.localeCompare(b.name);
+              }
+              
+              return sortOrder === 'asc' ? comparison : -comparison;
+            });
+            
+            setTools(filtered);
+            setFilteredTools(filtered);
+            setTotalToolsCount(filtered.length);
+          } else {
+            // Regular filtering without search
+            setIsSearching(false);
+            
+            // Get updated count with filters
+            const count = await getToolsCount({
+              category: filterCategory,
+              status: filterStatus
+            });
+            setTotalToolsCount(count);
+            
+            // Fetch filtered data
+            const toolsData = await getAllTools(1, toolsPerPage, {
+              category: filterCategory,
+              status: filterStatus,
+              searchTerm: searchTerm,
+              sortBy: sortBy,
+              sortOrder: sortOrder
+            });
+            setTools(toolsData);
+            setFilteredTools(toolsData);
+          }
+        } catch (err) {
+          console.error('Error fetching tools:', err);
+          setError('Failed to load tools. Please try again.');
+        } finally {
+          setLoading(false);
+        }
+      };
       
-      switch (sortBy) {
-        case 'name':
-          comparison = a.name.localeCompare(b.name);
-          break;
-        case 'category':
-          comparison = a.category.localeCompare(b.category);
-          break;
-        case 'status':
-          comparison = a.status.localeCompare(b.status);
-          break;
-        case 'views':
-          comparison = (a.viewCount || 0) - (b.viewCount || 0);
-          break;
-        case 'date':
-          comparison = (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0);
-          break;
-        default:
-          comparison = a.name.localeCompare(b.name);
+      if (!loading) {
+        fetchFiltered();
       }
-      
-      return sortOrder === 'asc' ? comparison : -comparison;
-    });
-
-    setFilteredTools(result);
-    setCurrentPage(1); // Reset to first page when filters change
-  }, [tools, searchTerm, filterCategory, filterStatus, sortBy, sortOrder]);
+    }
+  }, [searchTerm, filterCategory, filterStatus, sortBy, sortOrder]);
 
   // Handle page navigation
-  const handlePageChange = (pageNumber: number) => {
+  const handlePageChange = async (pageNumber: number) => {
     setCurrentPage(pageNumber);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setLoading(true);
+    
+    try {
+      // If searching, we need to handle pagination differently
+      if (isSearching && searchTerm.trim()) {
+        // We already have all search results, just update what's shown
+        setCurrentPage(pageNumber);
+      } else {
+        // Regular pagination
+        const toolsData = await getAllTools(pageNumber, toolsPerPage, {
+          category: filterCategory,
+          status: filterStatus,
+          searchTerm: searchTerm,
+          sortBy: sortBy,
+          sortOrder: sortOrder
+        });
+        setTools(toolsData);
+        setFilteredTools(toolsData);
+      }
+    } catch (err) {
+      console.error('Error fetching tools for page:', err);
+      setError('Failed to load tools for this page. Please try again.');
+    } finally {
+      setLoading(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   // Generate pagination items with ellipsis
@@ -141,16 +271,21 @@ export default function AdminTools() {
     return items;
   };
 
-  // Get current page tools
+  // Get current page tools - update to handle search results properly
   const getCurrentPageTools = () => {
-    const startIndex = (currentPage - 1) * toolsPerPage;
-    const endIndex = startIndex + toolsPerPage;
-    return filteredTools.slice(startIndex, endIndex);
+    if (isSearching) {
+      // For search results, paginate client-side
+      const startIndex = (currentPage - 1) * toolsPerPage;
+      const endIndex = Math.min(startIndex + toolsPerPage, filteredTools.length);
+      return filteredTools.slice(startIndex, endIndex);
+    } else {
+      // For regular filtering, we're already showing the right page from the server
+      return filteredTools;
+    }
   };
 
   // Calculate total pages
-  const totalTools = filteredTools.length;
-  const totalPages = Math.ceil(totalTools / toolsPerPage);
+  const totalPages = Math.ceil(totalToolsCount / toolsPerPage);
 
   const handleDelete = async (id: string) => {
     if (deleteConfirm !== id) {
@@ -216,14 +351,159 @@ export default function AdminTools() {
             <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">
               Search
             </label>
-            <input
-              type="text"
-              id="search"
-              placeholder="Search by name, description or tags"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            />
+            <div className="flex">
+              <input
+                type="text"
+                id="search"
+                placeholder="Search by name, description or tags"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && document.getElementById('searchButton')?.click()}
+                className="w-full px-3 py-2 border border-gray-300 rounded-l-md"
+              />
+              <button
+                id="searchButton"
+                onClick={() => {
+                  // Force refresh with current search term
+                  const fetchFiltered = async () => {
+                    try {
+                      setLoading(true);
+                      
+                      if (searchTerm.trim()) {
+                        setIsSearching(true);
+                        const searchResults = await searchTools(searchTerm);
+                        
+                        // Apply any other filters client-side
+                        let filtered = searchResults;
+                        
+                        if (filterCategory !== 'all') {
+                          filtered = filtered.filter(tool => tool.category === filterCategory);
+                        }
+                        
+                        if (filterStatus !== 'all') {
+                          filtered = filtered.filter(tool => tool.status === filterStatus);
+                        }
+                        
+                        // Apply sorting
+                        filtered.sort((a, b) => {
+                          let comparison = 0;
+                          
+                          switch (sortBy) {
+                            case 'name':
+                              comparison = a.name.localeCompare(b.name);
+                              break;
+                            case 'category':
+                              comparison = (a.category || '').localeCompare(b.category || '');
+                              break;
+                            case 'status':
+                              comparison = (a.status || '').localeCompare(b.status || '');
+                              break;
+                            case 'views':
+                              comparison = (a.viewCount || 0) - (b.viewCount || 0);
+                              break;
+                            case 'date':
+                              const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : (a.createdAt?.toMillis?.() || 0);
+                              const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : (b.createdAt?.toMillis?.() || 0);
+                              comparison = dateA - dateB;
+                              break;
+                            default:
+                              comparison = a.name.localeCompare(b.name);
+                          }
+                          
+                          return sortOrder === 'asc' ? comparison : -comparison;
+                        });
+                        
+                        setTools(filtered);
+                        setFilteredTools(filtered);
+                        setTotalToolsCount(filtered.length);
+                        setCurrentPage(1);
+                      } else {
+                        // If search is cleared, reset to normal view
+                        setIsSearching(false);
+                        
+                        // Get total count first
+                        const count = await getToolsCount({
+                          category: filterCategory,
+                          status: filterStatus
+                        });
+                        setTotalToolsCount(count);
+                        
+                        // Fetch filtered data
+                        const toolsData = await getAllTools(1, toolsPerPage, {
+                          category: filterCategory,
+                          status: filterStatus,
+                          searchTerm: '',
+                          sortBy: sortBy,
+                          sortOrder: sortOrder
+                        });
+                        setTools(toolsData);
+                        setFilteredTools(toolsData);
+                        setCurrentPage(1);
+                      }
+                    } catch (err) {
+                      console.error('Error searching tools:', err);
+                      setError('Failed to search tools. Please try again.');
+                    } finally {
+                      setLoading(false);
+                    }
+                  };
+                  
+                  fetchFiltered();
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-none hover:bg-blue-700"
+              >
+                Search
+              </button>
+              {searchTerm && (
+                <button
+                  onClick={() => {
+                    // Clear search and reset
+                    setSearchTerm('');
+                    setIsSearching(false);
+                    
+                    const fetchReset = async () => {
+                      try {
+                        setLoading(true);
+                        
+                        // Get total count first
+                        const count = await getToolsCount({
+                          category: filterCategory,
+                          status: filterStatus
+                        });
+                        setTotalToolsCount(count);
+                        
+                        // Fetch filtered data
+                        const toolsData = await getAllTools(1, toolsPerPage, {
+                          category: filterCategory,
+                          status: filterStatus,
+                          searchTerm: '',
+                          sortBy: sortBy,
+                          sortOrder: sortOrder
+                        });
+                        setTools(toolsData);
+                        setFilteredTools(toolsData);
+                        setCurrentPage(1);
+                      } catch (err) {
+                        console.error('Error resetting search:', err);
+                        setError('Failed to reset search. Please try again.');
+                      } finally {
+                        setLoading(false);
+                      }
+                    };
+                    
+                    fetchReset();
+                  }}
+                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-r-md hover:bg-gray-300"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            {isSearching && filteredTools.length > 0 && (
+              <p className="text-sm text-gray-500 mt-1">
+                Found {filteredTools.length} matching tools
+              </p>
+            )}
           </div>
           <div>
             <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
@@ -411,7 +691,7 @@ export default function AdminTools() {
           <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
             <div className="flex flex-col md:flex-row md:justify-between md:items-center">
               <p className="text-sm text-gray-500 mb-4 md:mb-0">
-                Showing {Math.min((currentPage - 1) * toolsPerPage + 1, filteredTools.length)} to {Math.min(currentPage * toolsPerPage, filteredTools.length)} of {filteredTools.length} tools
+                Showing {(currentPage - 1) * toolsPerPage + 1} to {Math.min(currentPage * toolsPerPage, totalToolsCount)} of {totalToolsCount} tools
               </p>
               
               {totalPages > 1 && (

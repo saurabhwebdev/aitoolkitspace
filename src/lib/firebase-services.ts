@@ -13,7 +13,8 @@ import {
   Timestamp,
   serverTimestamp,
   increment,
-  QueryConstraint
+  QueryConstraint,
+  startAfter
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from './firebase';
@@ -23,10 +24,99 @@ import { auth } from './firebase';
 // --- TOOLS CRUD OPERATIONS ---
 
 // Get all tools
-export const getAllTools = async () => {
+export const getAllTools = async (page = 1, pageSize = 9, filters = {
+  category: 'all',
+  status: 'all',
+  searchTerm: '',
+  sortBy: 'createdAt',
+  sortOrder: 'desc'
+}) => {
   const toolsRef = collection(db, 'tools');
-  const q = query(toolsRef, orderBy('createdAt', 'desc'));
+  let queryConstraints: QueryConstraint[] = [];
+  
+  // Add filters if provided
+  if (filters.category && filters.category !== 'all') {
+    queryConstraints.push(where('category', '==', filters.category));
+  }
+  
+  if (filters.status && filters.status !== 'all') {
+    queryConstraints.push(where('status', '==', filters.status));
+  }
+
+  // Handle search term using a compound query approach
+  if (filters.searchTerm) {
+    const searchTerm = filters.searchTerm.toLowerCase();
+    // Create an array of searchable fields
+    const searchableFields = ['name', 'description', 'tags'];
+    
+    // Add a compound query for each searchable field
+    const searchQueries = searchableFields.map(field => {
+      const fieldConstraints = [...queryConstraints];
+      fieldConstraints.push(where(field, '>=', searchTerm));
+      fieldConstraints.push(where(field, '<=', searchTerm + '\uf8ff'));
+      return query(toolsRef, ...fieldConstraints);
+    });
+
+    // Execute all search queries in parallel
+    const searchResults = await Promise.all(
+      searchQueries.map(q => getDocs(q))
+    );
+
+    // Combine and deduplicate results
+    const resultsMap = new Map();
+    searchResults.forEach(snapshot => {
+      snapshot.docs.forEach(doc => {
+        if (!resultsMap.has(doc.id)) {
+          const data = doc.data();
+          resultsMap.set(doc.id, {
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt?.toDate() || new Date(),
+            updatedAt: data.updatedAt?.toDate() || new Date()
+          } as Tool);
+        }
+      });
+    });
+
+    // Convert map to array and sort
+    let results = Array.from(resultsMap.values());
+    
+    // Apply sorting
+    const sortField = filters.sortBy || 'createdAt';
+    const sortDirection = filters.sortOrder === 'asc' ? 'asc' : 'desc';
+    results.sort((a, b) => {
+      const aValue = a[sortField];
+      const bValue = b[sortField];
+      return sortDirection === 'asc' 
+        ? (aValue > bValue ? 1 : -1)
+        : (aValue < bValue ? 1 : -1);
+    });
+
+    // Apply pagination
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    return results.slice(startIndex, endIndex);
+  }
+  
+  // If no search term, use regular query with sorting and pagination
+  const sortField = filters.sortBy || 'createdAt';
+  const sortDirection = filters.sortOrder === 'asc' ? 'asc' : 'desc';
+  
+  queryConstraints.push(orderBy(sortField, sortDirection));
+  
+  // Apply pagination
+  if (page > 1) {
+    const startAfterDoc = await getStartAfterDoc(page, pageSize, queryConstraints);
+    if (startAfterDoc) {
+      queryConstraints.push(startAfter(startAfterDoc));
+    }
+  }
+  
+  queryConstraints.push(limit(pageSize));
+  
+  const q = query(toolsRef, ...queryConstraints);
   const snapshot = await getDocs(q);
+  
   return snapshot.docs.map(doc => {
     const data = doc.data();
     return {
@@ -36,6 +126,49 @@ export const getAllTools = async () => {
       updatedAt: data.updatedAt?.toDate() || new Date()
     } as Tool;
   });
+};
+
+// Helper function to get the document to start after for pagination with filters
+const getStartAfterDoc = async (page: number, pageSize: number, queryConstraints: QueryConstraint[] = []) => {
+  const toolsRef = collection(db, 'tools');
+  // Create a copy of constraints without the startAfter and limit
+  const constraints = [...queryConstraints].filter(
+    constraint => !constraint.toString().includes('startAfter') && !constraint.toString().includes('limit')
+  );
+  
+  // Add limit for pagination
+  constraints.push(limit((page - 1) * pageSize));
+  
+  const q = query(toolsRef, ...constraints);
+  const snapshot = await getDocs(q);
+  
+  if (snapshot.empty || snapshot.docs.length < (page - 1) * pageSize) {
+    return null;
+  }
+  
+  return snapshot.docs[snapshot.docs.length - 1];
+};
+
+// Get total count of tools for pagination
+export const getToolsCount = async (filters = {
+  category: 'all',
+  status: 'all'
+}) => {
+  const toolsRef = collection(db, 'tools');
+  let queryConstraints: QueryConstraint[] = [];
+  
+  // Add filters if provided
+  if (filters.category && filters.category !== 'all') {
+    queryConstraints.push(where('category', '==', filters.category));
+  }
+  
+  if (filters.status && filters.status !== 'all') {
+    queryConstraints.push(where('status', '==', filters.status));
+  }
+  
+  const q = query(toolsRef, ...queryConstraints);
+  const snapshot = await getDocs(q);
+  return snapshot.size;
 };
 
 // Get featured tools
@@ -81,15 +214,42 @@ export const getFeaturedTools = async (): Promise<Tool[]> => {
 };
 
 // Get tools by category
-export const getToolsByCategory = async (category: string): Promise<Tool[]> => {
+export const getToolsByCategory = async (category: string, page = 1, pageSize = 20): Promise<Tool[]> => {
   try {
     const toolsRef = collection(db, 'tools');
-    const q = query(
-      toolsRef,
-      where('category', '==', category),
-      where('status', '==', 'ACTIVE'),
-      limit(20)
-    );
+    let q;
+    
+    if (page > 1) {
+      const startAfterDoc = await getCategoryStartAfterDoc(category, page, pageSize);
+      if (startAfterDoc) {
+        q = query(
+          toolsRef,
+          where('category', '==', category),
+          where('status', '==', 'ACTIVE'),
+          orderBy('createdAt', 'desc'),
+          startAfter(startAfterDoc),
+          limit(pageSize)
+        );
+      } else {
+        q = query(
+          toolsRef,
+          where('category', '==', category),
+          where('status', '==', 'ACTIVE'),
+          orderBy('createdAt', 'desc'),
+          limit(pageSize)
+        );
+      }
+    } else {
+      // First page
+      q = query(
+        toolsRef,
+        where('category', '==', category),
+        where('status', '==', 'ACTIVE'),
+        orderBy('createdAt', 'desc'),
+        limit(pageSize)
+      );
+    }
+    
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => {
       const data = doc.data();
@@ -123,6 +283,44 @@ export const getToolsByCategory = async (category: string): Promise<Tool[]> => {
   } catch (error) {
     console.error('Error getting tools by category:', error);
     throw error;
+  }
+};
+
+// Helper function to get the start-after document for category pagination
+const getCategoryStartAfterDoc = async (category: string, page: number, pageSize: number) => {
+  const toolsRef = collection(db, 'tools');
+  const q = query(
+    toolsRef,
+    where('category', '==', category),
+    where('status', '==', 'ACTIVE'),
+    orderBy('createdAt', 'desc'),
+    limit((page - 1) * pageSize)
+  );
+  
+  const snapshot = await getDocs(q);
+  
+  if (snapshot.empty || snapshot.docs.length < (page - 1) * pageSize) {
+    return null;
+  }
+  
+  return snapshot.docs[snapshot.docs.length - 1];
+};
+
+// Get total count of tools in a category for pagination
+export const getToolsByCategoryCount = async (category: string): Promise<number> => {
+  try {
+    const toolsRef = collection(db, 'tools');
+    const q = query(
+      toolsRef,
+      where('category', '==', category),
+      where('status', '==', 'ACTIVE')
+    );
+    
+    const snapshot = await getDocs(q);
+    return snapshot.size;
+  } catch (error) {
+    console.error('Error getting tools count by category:', error);
+    return 0;
   }
 };
 
@@ -581,46 +779,56 @@ export const updateBookmarkNotes = async (bookmarkId: string, notes: string): Pr
 // --- SEARCH ---
 
 export async function searchTools(searchQuery: string): Promise<Tool[]> {
+  if (!searchQuery.trim()) {
+    return [];
+  }
+
   const results: Tool[] = [];
+  const lowerQuery = searchQuery.toLowerCase();
+  
   try {
+    // Get all tools - more efficient for admin search since we need to search across multiple fields
     const toolsRef = collection(db, 'tools');
-    const q = query(
-      toolsRef,
-      where('name', '>=', searchQuery),
-      where('name', '<=', searchQuery + '\uf8ff'),
-      limit(10)
-    );
-    
-    const querySnapshot = await getDocs(q);
+    const querySnapshot = await getDocs(toolsRef);
     
     querySnapshot.forEach((doc) => {
       const data = doc.data() as Record<string, any>;
-      results.push({
-        id: doc.id,
-        name: data.name,
-        slug: data.slug,
-        description: data.description,
-        longDescription: data.longDescription,
-        imageUrl: data.imageUrl,
-        websiteUrl: data.websiteUrl,
-        category: data.category,
-        subcategory: data.subcategory,
-        pricing: data.pricing,
-        tags: data.tags || [],
-        features: data.features || [],
-        pros: data.pros || [],
-        cons: data.cons || [],
-        alternatives: data.alternatives || [],
-        affiliateLink: data.affiliateLink,
-        sponsored: data.sponsored || false,
-        status: data.status,
-        featured: data.featured || false,
-        createdAt: data.createdAt,
-        updatedAt: data.updatedAt,
-        viewCount: data.viewCount || 0,
-        rating: data.rating,
-        ratingCount: data.ratingCount
-      } as Tool);
+      const name = (data.name || '').toLowerCase();
+      const description = (data.description || '').toLowerCase();
+      const tags = (data.tags || []).map((tag: string) => tag.toLowerCase());
+      
+      // Check if search term appears in any of the searchable fields
+      if (name.includes(lowerQuery) || 
+          description.includes(lowerQuery) ||
+          tags.some((tag: string) => tag.includes(lowerQuery))) {
+        
+        results.push({
+          id: doc.id,
+          name: data.name,
+          slug: data.slug,
+          description: data.description,
+          longDescription: data.longDescription,
+          imageUrl: data.imageUrl,
+          websiteUrl: data.websiteUrl,
+          category: data.category,
+          subcategory: data.subcategory,
+          pricing: data.pricing,
+          tags: data.tags || [],
+          features: data.features || [],
+          pros: data.pros || [],
+          cons: data.cons || [],
+          alternatives: data.alternatives || [],
+          affiliateLink: data.affiliateLink,
+          sponsored: data.sponsored || false,
+          status: data.status,
+          featured: data.featured || false,
+          createdAt: data.createdAt,
+          updatedAt: data.updatedAt,
+          viewCount: data.viewCount || 0,
+          rating: data.rating,
+          ratingCount: data.ratingCount
+        } as Tool);
+      }
     });
     
     return results;

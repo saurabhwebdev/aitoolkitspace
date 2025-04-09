@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { getToolsByCategory, getAllTools } from '@/lib/firebase-services';
+import { getToolsByCategory, getAllTools, getToolsByCategoryCount } from '@/lib/firebase-services';
 import { Tool } from '@/lib/models';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 
 const TOOLS_PER_PAGE = 9; // Match the tools page pagination
 
@@ -14,15 +15,27 @@ export default function CategoryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalToolCount, setTotalToolCount] = useState(0);
+  const [categoryName, setCategoryName] = useState<string>('');
   const params = useParams();
+  const searchParams = useSearchParams();
   const slug = params?.slug as string;
 
-  // Calculate pagination values
-  const totalTools = tools.length;
-  const totalPages = Math.ceil(totalTools / TOOLS_PER_PAGE);
+  // Initialize page from URL
+  useEffect(() => {
+    const pageParam = searchParams.get('page');
+    if (pageParam) {
+      const pageNumber = parseInt(pageParam, 10);
+      if (!isNaN(pageNumber) && pageNumber > 0) {
+        setCurrentPage(pageNumber);
+      }
+    }
+  }, [searchParams]);
+
+  // Calculate pagination values based on total count
+  const totalPages = Math.ceil(totalToolCount / TOOLS_PER_PAGE);
   const startIndex = (currentPage - 1) * TOOLS_PER_PAGE;
-  const endIndex = startIndex + TOOLS_PER_PAGE;
-  const currentTools = tools.slice(startIndex, endIndex);
+  const endIndex = Math.min(startIndex + TOOLS_PER_PAGE, totalToolCount);
 
   // Generate pagination items with ellipsis
   const getPaginationItems = () => {
@@ -70,17 +83,25 @@ export default function CategoryPage() {
       try {
         setLoading(true);
         // Convert slug to category name
-        const categoryName = slug.split('-').map(word => 
+        const formattedCategoryName = slug.split('-').map(word => 
           word.charAt(0).toUpperCase() + word.slice(1)
         ).join(' ');
-
-        // First try exact match
-        let categoryTools = await getToolsByCategory(categoryName);
         
-        // If no tools found, try getting all tools and filter
-        if (categoryTools.length === 0) {
-          const allTools = await getAllTools();
-          categoryTools = allTools.filter(tool => {
+        setCategoryName(formattedCategoryName);
+
+        // Get total count first
+        const count = await getToolsByCategoryCount(formattedCategoryName);
+        setTotalToolCount(count);
+
+        // Then fetch page of tools
+        if (count > 0) {
+          const categoryTools = await getToolsByCategory(formattedCategoryName, currentPage, TOOLS_PER_PAGE);
+          setTools(categoryTools);
+        } else {
+          // If no exact match found, fall back to the old method
+          // Use a larger page size to make sure we get all tools for proper filtering
+          const allTools = await getAllTools(1, 1000);
+          const filteredTools = allTools.filter(tool => {
             if (!tool.category) return false;
             
             // Split categories and normalize them
@@ -89,12 +110,15 @@ export default function CategoryPage() {
             
             // Check if any of the tool's categories match our slug
             return toolCategories.includes(slug.toLowerCase()) ||
-                   toolCategories.includes(categoryName.toLowerCase());
+                   toolCategories.includes(formattedCategoryName.toLowerCase());
           });
+          
+          // Implement manual pagination for filtered tools
+          const startIdx = (currentPage - 1) * TOOLS_PER_PAGE;
+          const endIdx = startIdx + TOOLS_PER_PAGE;
+          setTools(filteredTools.slice(startIdx, endIdx));
+          setTotalToolCount(filteredTools.length);
         }
-
-        setTools(categoryTools);
-        setCurrentPage(1); // Reset to first page when category changes
       } catch (err) {
         console.error('Error fetching tools:', err);
         setError('Failed to load tools. Please try again later.');
@@ -106,11 +130,15 @@ export default function CategoryPage() {
     if (slug) {
       fetchTools();
     }
-  }, [slug]);
+  }, [slug, currentPage]);
 
   const handlePageChange = (pageNumber: number) => {
-    setCurrentPage(pageNumber);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Use history state to maintain a clean URL with the page parameter
+    const url = new URL(window.location.href);
+    url.searchParams.set('page', pageNumber.toString());
+    window.history.pushState({}, '', url);
+    setCurrentPage(pageNumber);
   };
 
   if (loading) {
@@ -143,7 +171,7 @@ export default function CategoryPage() {
           <h1 className="text-4xl font-bold mb-2 capitalize">{slug.replace(/-/g, ' ')}</h1>
           <p className="text-gray-600 mb-8">
             Discover the best AI tools in this category 
-            {totalTools > 0 && ` (${totalTools} tools found)`}
+            {totalToolCount > 0 && ` (${totalToolCount} tools found)`}
           </p>
 
           {tools.length === 0 ? (
@@ -153,18 +181,27 @@ export default function CategoryPage() {
           ) : (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                {currentTools.map((tool) => (
+                {tools.map((tool) => (
                   <Link href={`/tools/${tool.slug}`} key={tool.id}>
                     <motion.div
                       whileHover={{ scale: 1.02 }}
                       className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-6"
                     >
                       <div className="flex items-start space-x-4">
-                        <img
-                          src={tool.imageUrl}
-                          alt={tool.name}
-                          className="w-16 h-16 rounded-lg object-cover"
-                        />
+                        {tool.imageUrl ? (
+                          <div className="relative w-16 h-16 flex-shrink-0">
+                            <Image
+                              src={tool.imageUrl}
+                              alt={tool.name}
+                              fill
+                              className="rounded-lg object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-16 h-16 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                            <span className="text-gray-400 text-xs">No image</span>
+                          </div>
+                        )}
                         <div className="flex-1">
                           <h2 className="text-xl font-semibold mb-1">{tool.name}</h2>
                           <p className="text-gray-600 text-sm line-clamp-2">{tool.description}</p>
@@ -244,7 +281,7 @@ export default function CategoryPage() {
                   
                   {/* Results count */}
                   <div className="mt-4 text-sm text-gray-500">
-                    Showing {startIndex + 1}-{Math.min(endIndex, totalTools)} of {totalTools} tools
+                    Showing {startIndex + 1}-{Math.min(endIndex, totalToolCount)} of {totalToolCount} tools
                   </div>
                 </div>
               )}

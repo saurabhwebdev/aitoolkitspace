@@ -23,7 +23,8 @@ export default function Home() {
         
         // If no categories are found in the categories collection, extract them from tools
         if (allCategories.length === 0) {
-          const tools = await getAllTools();
+          // Get all tools with a large page size to ensure we capture all categories
+          const tools = await getAllTools(1, 1000);
           
           // Extract unique categories from tools
           const categoryMap = new Map<string, number>();
