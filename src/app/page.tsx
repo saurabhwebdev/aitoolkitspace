@@ -10,6 +10,7 @@ import SearchTools from '@/components/home/SearchTools';
 import { getAllCategories, getAllTools } from '@/lib/firebase-services';
 import { Category, Tool } from '@/lib/models';
 import FeaturedBlogPosts from '@/components/home/FeaturedBlogPosts';
+import AnimatedTextGradient from '@/components/ui/AnimatedTextGradient';
 
 export default function Home() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -94,7 +95,7 @@ export default function Home() {
               transition={{ delay: 0.3, duration: 0.5 }}
               className="text-4xl md:text-6xl font-bold mb-6"
             >
-              Find the Perfect <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">AI Tools</span> for Your Needs
+              Find the Perfect <AnimatedTextGradient>AI Tools</AnimatedTextGradient> for Your Needs
             </motion.h1>
             
             <motion.p
@@ -174,7 +175,9 @@ export default function Home() {
             className="text-center mb-12"
           >
             <div className="inline-block px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium mb-3">HANDPICKED SELECTION</div>
-            <h2 className="text-3xl md:text-4xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">Featured AI Tools</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              <AnimatedTextGradient>Featured AI Tools</AnimatedTextGradient>
+            </h2>
             <p className="text-gray-600 max-w-2xl mx-auto">
               Discover our carefully selected collection of the most innovative and powerful AI tools
             </p>
@@ -250,7 +253,9 @@ export default function Home() {
             className="text-center mb-12"
           >
             <div className="inline-block px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium mb-3">LATEST INSIGHTS</div>
-            <h2 className="text-3xl md:text-4xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">From Our Blog</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              <AnimatedTextGradient>From Our Blog</AnimatedTextGradient>
+            </h2>
             <p className="text-gray-600 max-w-2xl mx-auto">
               Discover the latest trends, tutorials, and insights about AI tools and technologies
             </p>
@@ -309,7 +314,9 @@ export default function Home() {
               className="text-center"
             >
               <div className="inline-block px-3 py-1 bg-white/20 text-white rounded-full text-sm font-medium mb-4">STAY IN THE LOOP</div>
-              <h2 className="text-3xl md:text-4xl font-bold mb-4 text-white">Stay Updated with AI Trends</h2>
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">
+                <AnimatedTextGradient>Stay Updated with AI Trends</AnimatedTextGradient>
+              </h2>
               <p className="text-blue-100 max-w-2xl mx-auto mb-8 text-lg">
                 Subscribe to our blog for the latest insights, tutorials, and updates on AI tools and technologies that are shaping the future
               </p>

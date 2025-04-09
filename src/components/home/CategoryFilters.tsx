@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { getAllCategories, getAllTools } from '@/lib/firebase-services';
 import { Category, Tool } from '@/lib/models';
+import AnimatedTextGradient from '@/components/ui/AnimatedTextGradient';
 
 export default function CategoryFilters() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -162,7 +163,7 @@ export default function CategoryFilters() {
             viewport={{ once: true }}
             className="text-3xl md:text-4xl font-bold mb-4"
           >
-            Browse by Category
+            <AnimatedTextGradient>Browse by Category</AnimatedTextGradient>
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 10 }}
