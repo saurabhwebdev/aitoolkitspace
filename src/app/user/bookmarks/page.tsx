@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { getUserBookmarks, getToolById } from '@/lib/firebase-services';
 import { Tool, Bookmark } from '@/lib/models';
 import ToolSubmissionForm from '@/components/ToolSubmissionForm';
+import { useSearchParams } from 'next/navigation';
 
 export default function BookmarksPage() {
   const { user } = useAuth();
@@ -14,7 +15,11 @@ export default function BookmarksPage() {
   const [tools, setTools] = useState<Tool[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'bookmarks' | 'submit'>('bookmarks');
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState<'bookmarks' | 'submit'>(
+    tabParam === 'submit' ? 'submit' : 'bookmarks'
+  );
 
   useEffect(() => {
     const fetchBookmarks = async () => {
@@ -40,6 +45,15 @@ export default function BookmarksPage() {
 
     fetchBookmarks();
   }, [user]);
+
+  // Update activeTab when URL parameter changes
+  useEffect(() => {
+    if (tabParam === 'submit') {
+      setActiveTab('submit');
+    } else {
+      setActiveTab('bookmarks');
+    }
+  }, [tabParam]);
 
   if (!user) {
     return (

@@ -140,6 +140,22 @@ const Footer = () => {
           </div>
         </div>
         
+        {/* Submit Tool Button */}
+        <div className="mt-12 flex justify-center">
+          <Link href="/user/bookmarks?tab=submit">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-medium shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+              Submit a Tool
+            </motion.button>
+          </Link>
+        </div>
+        
         <div className="mt-12 pt-8 border-t border-gray-800 text-center text-gray-400">
           <p>&copy; {new Date().getFullYear()} AIToolKit.space. All rights reserved.</p>
         </div>
