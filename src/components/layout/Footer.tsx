@@ -101,7 +101,7 @@ const Footer = () => {
               </li>
               <li>
                 <a 
-                  href="https://github.com/aitoolkit" 
+                  href="https://github.com/saurabhwebdev" 
                   target="_blank" 
                   rel="noopener noreferrer" 
                   className="text-gray-400 hover:text-white transition-colors flex items-center"
