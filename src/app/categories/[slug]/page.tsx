@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { getToolsByCategory, getAllTools, getToolsByCategoryCount } from '@/lib/firebase-services';
@@ -10,7 +10,8 @@ import Image from 'next/image';
 
 const TOOLS_PER_PAGE = 9; // Match the tools page pagination
 
-export default function CategoryPage() {
+// Component that uses useSearchParams
+function CategoryContent() {
   const [tools, setTools] = useState<Tool[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -106,7 +107,7 @@ export default function CategoryPage() {
             
             // Split categories and normalize them
             const toolCategories = tool.category.split(',')
-              .map(cat => cat.trim().toLowerCase());
+              .map((cat: string) => cat.trim().toLowerCase());
             
             // Check if any of the tool's categories match our slug
             return toolCategories.includes(slug.toLowerCase()) ||
@@ -290,5 +291,23 @@ export default function CategoryPage() {
         </motion.div>
       </div>
     </div>
+  );
+}
+
+// Loading fallback
+function CategoryPageLoading() {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  );
+}
+
+// Main page component with Suspense boundary
+export default function CategoryPage() {
+  return (
+    <Suspense fallback={<CategoryPageLoading />}>
+      <CategoryContent />
+    </Suspense>
   );
 } 

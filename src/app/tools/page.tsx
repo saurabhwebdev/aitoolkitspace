@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import { getAllTools, isToolBookmarked, addBookmark, removeBookmark, searchTools, getToolsCount } from '@/lib/firebase-services';
 import { Tool, ToolCategory, ToolPricing } from '@/lib/models';
@@ -9,7 +9,8 @@ import { useAuth } from '@/lib/AuthContext';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 
-export default function ToolsPage() {
+// Create a client component that uses useSearchParams
+function ToolsContent() {
   const [tools, setTools] = useState<Tool[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -281,162 +282,181 @@ export default function ToolsPage() {
   return (
     <div className="min-h-screen pt-20 px-4">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-4">AI Tools Directory</h1>
-          <p className="text-gray-600">Discover and compare the best AI tools for your needs</p>
-        </div>
-
-        {/* Search Bar */}
-        <div className="mb-8">
-          <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-2">
-            <div className="relative flex-grow">
+        <h1 className="text-3xl font-bold mb-8">AI Tools Directory</h1>
+        
+        {/* Filters and search */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {/* Search */}
+          <div className="md:col-span-3">
+            <form onSubmit={handleSearch} className="flex">
               <input
                 type="text"
+                placeholder="Search for tools..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search for AI tools..."
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
+              <button 
+                type="submit"
+                className="px-4 py-2 bg-blue-600 text-white rounded-r-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              >
+                Search
+              </button>
               {searchQuery && (
-                <button
-                  type="button"
+                <button 
+                  type="button" 
                   onClick={handleClearSearch}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="ml-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                  </svg>
+                  Clear
                 </button>
               )}
-            </div>
-            <button
-              type="submit"
-              disabled={isSearching}
-              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center justify-center"
+            </form>
+          </div>
+          
+          {/* Category Filter */}
+          <div>
+            <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
+              Category
+            </label>
+            <select
+              id="category"
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              {isSearching ? (
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-              ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
-                </svg>
-              )}
-              Search
-            </button>
-          </form>
+              <option value="all">All Categories</option>
+              {availableCategories.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          {/* Pricing Filter */}
+          <div>
+            <label htmlFor="pricing" className="block text-sm font-medium text-gray-700 mb-1">
+              Pricing
+            </label>
+            <select
+              id="pricing"
+              value={selectedPricing}
+              onChange={(e) => setSelectedPricing(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="all">All Pricing</option>
+              <option value="Free">Free</option>
+              <option value="Freemium">Freemium</option>
+              <option value="Paid">Paid</option>
+              <option value="Free Trial">Free Trial</option>
+            </select>
+          </div>
+          
+          {/* Sort By */}
+          <div>
+            <label htmlFor="sort" className="block text-sm font-medium text-gray-700 mb-1">
+              Sort By
+            </label>
+            <select
+              id="sort"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as 'name' | 'newest')}
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="newest">Newest First</option>
+              <option value="name">A-Z</option>
+            </select>
+          </div>
         </div>
-
-        {/* Filters */}
-        <div className="mb-8 flex flex-wrap gap-4">
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="px-4 py-2 border rounded-md"
-          >
-            <option value="all">All Categories</option>
-            {availableCategories.map((category) => (
-              <option key={category} value={category}>{category}</option>
-            ))}
-          </select>
-
-          <select
-            value={selectedPricing}
-            onChange={(e) => setSelectedPricing(e.target.value)}
-            className="px-4 py-2 border rounded-md"
-          >
-            <option value="all">All Pricing</option>
-            {Object.values(ToolPricing).map((pricing) => (
-              <option key={pricing} value={pricing}>{pricing}</option>
-            ))}
-          </select>
-
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as 'name' | 'newest')}
-            className="px-4 py-2 border rounded-md"
-          >
-            <option value="newest">Newest First</option>
-            <option value="name">Name A-Z</option>
-          </select>
-        </div>
-
+        
         {/* Tools Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {sortedTools.map((tool, index) => (
-            <div key={tool.id} className="relative">
-              <Link href={`/tools/${tool.slug}`}>
-                <motion.div
-                  whileHover={{ y: -5 }}
-                  className="bg-white rounded-xl shadow-sm hover:shadow-md transition-all p-6 h-full flex flex-col"
-                >
-                  <div className="relative w-full aspect-video mb-4 overflow-hidden rounded-lg">
-                    {tool.imageUrl ? (
-                      <Image
-                        src={tool.imageUrl}
-                        alt={tool.name}
-                        fill
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        className="object-contain bg-gray-50"
-                        priority={index < 3} // Prioritize loading the first 3 images
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gray-100 rounded-lg flex items-center justify-center">
-                        <span className="text-gray-400">No image</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <h2 className="text-xl font-semibold mb-2">{tool.name}</h2>
-                  <p className="text-gray-600 text-sm mb-4 line-clamp-2 flex-grow">
-                    {tool.description}
-                  </p>
-
-                  <div className="flex flex-wrap gap-2 mt-auto">
-                    {getToolCategories(tool).map((category, index) => (
-                      <span key={index} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                        {category}
-                      </span>
-                    ))}
-                    {tool.pricing.map((price) => (
-                      <span
-                        key={price}
-                        className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full"
-                      >
-                        {price}
-                      </span>
-                    ))}
-                  </div>
-                </motion.div>
-              </Link>
-              <button
-                onClick={(e) => handleBookmarkToggle(e, tool)}
-                disabled={bookmarkLoading === tool.id}
-                className="absolute top-4 right-4 p-2 bg-white rounded-full shadow-md hover:shadow-lg transition-shadow"
-                aria-label={bookmarkedTools[tool.id!] ? "Remove from bookmarks" : "Add to bookmarks"}
+          {sortedTools.map((tool) => (
+            <motion.div
+              key={tool.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <Link 
+                href={`/tools/${tool.slug}`}
+                className="block h-full bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-200"
               >
-                {bookmarkLoading === tool.id ? (
-                  <div className="w-5 h-5 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <svg 
-                    className={`w-5 h-5 ${bookmarkedTools[tool.id!] ? 'text-yellow-500 fill-yellow-500' : 'text-gray-400'}`} 
-                    xmlns="http://www.w3.org/2000/svg" 
-                    viewBox="0 0 24 24" 
-                    fill={bookmarkedTools[tool.id!] ? "currentColor" : "none"}
-                    stroke="currentColor" 
-                    strokeWidth={bookmarkedTools[tool.id!] ? "0" : "2"}
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
-                  </svg>
-                )}
-              </button>
-            </div>
+                <div className="relative aspect-video overflow-hidden bg-gray-100">
+                  {tool.imageUrl ? (
+                    <Image
+                      src={tool.imageUrl}
+                      alt={tool.name}
+                      fill
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
+                      <span className="text-gray-400 text-lg">No Image</span>
+                    </div>
+                  )}
+                  
+                  {/* Bookmark button */}
+                  {user && (
+                    <button
+                      onClick={(e) => handleBookmarkToggle(e, tool)}
+                      className="absolute top-2 right-2 p-2 rounded-full bg-white bg-opacity-80 hover:bg-opacity-100 shadow-sm transition-all duration-200"
+                      disabled={bookmarkLoading === tool.id}
+                    >
+                      {bookmarkLoading === tool.id ? (
+                        <div className="w-5 h-5 border-2 border-gray-500 border-t-transparent rounded-full animate-spin"></div>
+                      ) : (
+                        bookmarkedTools[tool.id!] ? (
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                          </svg>
+                        ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 hover:text-red-500" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                          </svg>
+                        )
+                      )}
+                    </button>
+                  )}
+                  
+                  {/* Pricing badge */}
+                  {tool.pricing && (
+                    <span className="absolute bottom-2 left-2 px-2 py-1 bg-black bg-opacity-70 text-white text-xs rounded-full">
+                      {tool.pricing}
+                    </span>
+                  )}
+                </div>
+                
+                <div className="p-4">
+                  <h3 className="font-bold text-lg mb-1">{tool.name}</h3>
+                  
+                  {/* Categories */}
+                  {tool.category && (
+                    <div className="mb-2 flex flex-wrap gap-1">
+                      {getToolCategories(tool).map((category, index) => (
+                        <span 
+                          key={index} 
+                          className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full"
+                        >
+                          {category}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  
+                  <p className="text-sm text-gray-600 line-clamp-3">{tool.description}</p>
+                </div>
+              </Link>
+            </motion.div>
           ))}
         </div>
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="mt-12 flex flex-col items-center">
-            <div className="flex items-center space-x-1">
+        
+        {/* Show pagination only if we have enough tools */}
+        {!isSearching && sortedTools.length > 0 && totalPages > 1 && (
+          <div className="mt-8">
+            <div className="flex justify-center space-x-2">
               <button
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
@@ -453,24 +473,22 @@ export default function ToolsPage() {
               </button>
               
               {getPaginationItems().map((item, index) => (
-                item === 'ellipsis-start' || item === 'ellipsis-end' ? (
-                  <span key={`ellipsis-${index}`} className="px-2 py-2 text-gray-500">
-                    ...
-                  </span>
-                ) : (
+                typeof item === 'number' ? (
                   <button
-                    key={item}
-                    onClick={() => handlePageChange(item as number)}
+                    key={index}
+                    onClick={() => handlePageChange(item)}
                     className={`px-3 py-2 rounded-md ${
                       currentPage === item
                         ? 'bg-blue-600 text-white'
                         : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
                     }`}
-                    aria-label={`Page ${item}`}
-                    aria-current={currentPage === item ? 'page' : undefined}
                   >
                     {item}
                   </button>
+                ) : (
+                  <span key={index} className="px-3 py-2">
+                    ...
+                  </span>
                 )
               ))}
               
@@ -504,5 +522,27 @@ export default function ToolsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// Loading fallback
+function ToolsPageLoading() {
+  return (
+    <div className="min-h-screen pt-20 px-4">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex items-center justify-center h-64">
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Main page component with Suspense boundary
+export default function ToolsPage() {
+  return (
+    <Suspense fallback={<ToolsPageLoading />}>
+      <ToolsContent />
+    </Suspense>
   );
 } 
