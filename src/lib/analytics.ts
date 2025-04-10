@@ -1,5 +1,5 @@
 // Google Analytics tracking ID
-export const GA_TRACKING_ID = 'G-BN1G64J4SC'; // Google Analytics tracking ID
+export const GA_TRACKING_ID = 'G-SLHW481K5J';
 
 // Log the pageview with their URL
 export const pageview = (url: string) => {
