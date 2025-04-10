@@ -98,7 +98,7 @@ const Footer = () => {
                 aria-label="GitHub"
               >
                 <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/>
+                  <path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.237 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/>
                 </svg>
               </a>
               <a 
@@ -238,9 +238,170 @@ const Footer = () => {
           </div>
         </div>
         
-        {/* Copyright */}
-        <div className="mt-16 pt-8 border-t border-gray-800 text-center text-gray-500 text-sm">
-          <p>&copy; {new Date().getFullYear()} AIToolKit.space. All rights reserved.</p>
+        {/* Copyright with retro 90s video game style */}
+        <div className="mt-16 pt-8 border-t border-gray-800">
+          <div className="relative overflow-hidden rounded-lg bg-gradient-to-r from-purple-900 via-indigo-900 to-blue-900 py-4 px-6 mx-auto max-w-4xl">
+            {/* Retro grid background with animation */}
+            <div 
+              className="absolute inset-0 z-0 opacity-20" 
+              style={{
+                backgroundImage: 'linear-gradient(0deg, transparent 24%, rgba(255, 255, 255, .05) 25%, rgba(255, 255, 255, .05) 26%, transparent 27%, transparent 74%, rgba(255, 255, 255, .05) 75%, rgba(255, 255, 255, .05) 76%, transparent 77%, transparent), linear-gradient(90deg, transparent 24%, rgba(255, 255, 255, .05) 25%, rgba(255, 255, 255, .05) 26%, transparent 27%, transparent 74%, rgba(255, 255, 255, .05) 75%, rgba(255, 255, 255, .05) 76%, transparent 77%, transparent)',
+                backgroundSize: '50px 50px',
+                animation: 'gridMove 15s linear infinite'
+              }}
+            />
+            
+            {/* Floating pixels effect */}
+            <div className="absolute inset-0 z-0 overflow-hidden">
+              {[...Array(20)].map((_, i) => (
+                <div 
+                  key={i}
+                  className="absolute w-1 h-1 bg-white rounded-full opacity-70"
+                  style={{
+                    left: `${Math.random() * 100}%`,
+                    top: `${Math.random() * 100}%`,
+                    animation: `float ${2 + Math.random() * 4}s ease-in-out ${Math.random() * 2}s infinite alternate`
+                  }}
+                />
+              ))}
+            </div>
+            
+            {/* Scanlines effect */}
+            <div 
+              className="absolute inset-0 z-0 opacity-10"
+              style={{
+                backgroundImage: 'linear-gradient(rgba(255, 255, 255, 0.1) 50%, transparent 50%)',
+                backgroundSize: '100% 4px',
+                animation: 'scanline 0.5s linear infinite'
+              }}
+            />
+            
+            {/* Moving glow effects */}
+            <div 
+              className="absolute -left-10 w-20 h-20 rounded-full bg-blue-500 blur-xl opacity-30"
+              style={{
+                animation: 'moveGlow 8s ease-in-out infinite alternate'
+              }}
+            ></div>
+            <div 
+              className="absolute -right-10 bottom-0 w-20 h-20 rounded-full bg-purple-500 blur-xl opacity-30"
+              style={{
+                animation: 'moveGlow 8s ease-in-out 2s infinite alternate-reverse'
+              }}
+            ></div>
+            
+            {/* Text with glitch effect */}
+            <div className="relative z-10 text-center">
+              <p 
+                className="relative text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-white to-pink-300 font-mono font-bold tracking-wide text-base md:text-lg"
+                style={{
+                  textShadow: '0 0 5px rgba(0, 255, 255, 0.7), 0 0 10px rgba(0, 255, 255, 0.5)',
+                  animation: 'textPulse 2s ease-in-out infinite'
+                }}
+              >
+                &copy; {new Date().getFullYear()} AIToolKit.space. All rights reserved.
+              </p>
+              
+              {/* Glitch overlay */}
+              <div 
+                className="absolute inset-0 opacity-0 text-center font-mono font-bold tracking-wide text-base md:text-lg text-pink-300"
+                style={{
+                  clipPath: 'inset(0 0 0 0)',
+                  animation: 'glitch 3s infinite linear alternate-reverse',
+                  textShadow: '2px 0 rgba(255, 0, 255, 0.7), -2px 0 rgba(0, 255, 255, 0.7)'
+                }}
+              >
+                &copy; {new Date().getFullYear()} AIToolKit.space. All rights reserved.
+              </div>
+            </div>
+          </div>
+          
+          {/* Add animation keyframes */}
+          <style jsx>{`
+            @keyframes gridMove {
+              0% { background-position: 0 0; }
+              100% { background-position: 50px 50px; }
+            }
+            
+            @keyframes scanline {
+              0% { transform: translateY(0); }
+              100% { transform: translateY(4px); }
+            }
+            
+            @keyframes moveGlow {
+              0% { transform: translateY(-10px) translateX(0); }
+              50% { transform: translateY(10px) translateX(10px); }
+              100% { transform: translateY(0) translateX(20px); }
+            }
+            
+            @keyframes float {
+              0% { transform: translateY(0) scale(1); opacity: 0.5; }
+              100% { transform: translateY(-10px) scale(1.5); opacity: 0.8; }
+            }
+            
+            @keyframes textPulse {
+              0%, 100% { opacity: 0.95; filter: brightness(1); }
+              50% { opacity: 1; filter: brightness(1.2); }
+            }
+            
+            @keyframes glitch {
+              0% { 
+                clip-path: inset(80% 0 0 0);
+                transform: translate(-4px, -2px);
+                opacity: 0.1;
+              }
+              10% { 
+                clip-path: inset(10% 0 85% 0); 
+                transform: translate(4px, 2px);
+                opacity: 0.1;
+              }
+              20% { 
+                clip-path: inset(80% 0 0 0);
+                transform: translate(-3px, 0);
+                opacity: 0.1; 
+              }
+              30% { 
+                clip-path: inset(10% 0 85% 0);
+                transform: translate(0, 2px); 
+                opacity: 0;
+              }
+              40% { 
+                clip-path: inset(50% 0 30% 0); 
+                transform: translate(3px, -1px);
+                opacity: 0.1;
+              }
+              50% { 
+                clip-path: inset(10% 0 85% 0); 
+                transform: translate(-3px, 1px);
+                opacity: 0;
+              }
+              60% { 
+                clip-path: inset(40% 0 43% 0);
+                transform: translate(3px, -2px);
+                opacity: 0.1;
+              }
+              70% { 
+                clip-path: inset(30% 0 40% 0);
+                transform: translate(-4px, 3px); 
+                opacity: 0;
+              }
+              80% { 
+                clip-path: inset(90% 0 1% 0);
+                transform: translate(5px, -1px); 
+                opacity: 0.1;
+              }
+              90% { 
+                clip-path: inset(1% 0 95% 0);
+                transform: translate(-7px, 5px); 
+                opacity: 0;
+              }
+              100% { 
+                clip-path: inset(10% 0 58% 0); 
+                transform: translate(7px, -5px);
+                opacity: 0.1;
+              }
+            }
+          `}</style>
         </div>
       </div>
     </footer>
